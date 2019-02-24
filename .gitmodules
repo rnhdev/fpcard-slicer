@@ -1,0 +1,3 @@
+[submodule "third_party/nbis"]
+	path = third_party/nbis
+	url = https://github.com/rnhdev/nbis
