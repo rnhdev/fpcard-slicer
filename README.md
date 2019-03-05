@@ -17,6 +17,13 @@ Is a application for to extract fingerprints of non-standard teen fingerprint ca
  $ cd cmake .. && make
  $ ./fpcard-slicer -s ../test -d ../test -q 10 -f jpg -o
  ```
+## Options
+* -h,--help:	Show help message
+* -s,--source.	Specify the image source. Can be source file or directory path
+* -d,--destination. Specify the destination path for output result
+	-f,--format. Specify output format (png or jpeg)
+	-q,--quality. Specify the output quality (only for jpg output available)
+	-o,--demo. If is set, the partial result is output
 ## Limitations
 Only support scanned images in 500dpi in jpeg or png format
 ## Example
