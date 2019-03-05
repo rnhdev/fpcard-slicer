@@ -1,6 +1,6 @@
 fpcard-slicer - A slicer for non-standard fingerprints cards
 ===========================
-Is a application for to extract fingerprints of non-standard fingerprint card
+Is a application for to extract fingerprints of non-standard fingerprint card. Allows to process individual or batch images.
 # Building form sources
 ## Pre-requisites
 ### Linux
