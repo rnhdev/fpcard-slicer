@@ -1,12 +1,9 @@
-//
-// Created by nico on 18/02/19.
-//
-
 #include <string>
 #include <memory>
 #include <image.h>
 #include <iostream>
 #include <slicer.h>
+#include <parse_arguments.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,36 +18,41 @@ int debug=0;
 using namespace std;
 using namespace fpcard_slicer::image;
 using namespace fpcard_slicer::slicer;
+using namespace fpcard_slicer::application;
 
-int main()
-{
-  string rootpath = "../test/";
-  string name = "A002";
-  string cardpath = rootpath + name + ".JPG";
+std::string GetName(std::string name) {
+  int start = name.rfind('/')+1;
+  int len = name.rfind('.') - start;
+  return name.substr(start, len);
+}
 
-  system(string("mkdir -p " + rootpath + name).c_str());
+int main(int argc, char** argv) {
+  SlicerConfig config;
 
-  unique_ptr<Image> image (new Image());
-
-  try {
-    image->LoadFromFile(cardpath);
-  }
-  catch (std::exception& e) {
-    cerr <<  e.what() << std::endl;
-    return 0;
+  if(!ParseArguments(argc, argv, config)) {
+    return -1;
   }
 
-  Slicer slicer(10, 10, Mode::General, 20);
+  //TODO: add slicer.ini
+  Slicer slicer(10, 1, Mode::General, 20);
 
-  try {
-    auto coord_list = slicer.CalculateSlice(image);
+  for(auto &source : config.source_list()) {
+    std::string output_path = config.destination() + "/" + GetName(source);
+    system(std::string("mkdir -p " + output_path).c_str());
+    std::cout << output_path << " ... ";
 
-    for(uint k =0; k < coord_list.size(); k++) {
-      (image->Cut(coord_list[k]))->Save(rootpath + name + "/" + to_string(k) + ".jpg", Format::JPEG);
+    auto fpcard = std::make_shared<Image>(source);
+    auto clip_list = slicer.CalculateSlice(fpcard, config.demo_mode()?output_path:"");
+
+    //Save result
+    int index = 0;
+    for(auto &clip : clip_list) {
+      std::string out = output_path + "/fp_" + std::to_string(index++) + "." + config.output_format();
+      (fpcard->Cut(clip))->Save(out, config.output_quality());
     }
+
+    std::cout << " OK" << endl;
   }
-  catch(std::exception& e) {
-    cerr <<  e.what() << std::endl;
-    return 0;
-  }
+
+  return 0;
 }

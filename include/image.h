@@ -2,7 +2,8 @@
 #define FP_CARDSLICER_IMAGE_H
 #include <string>
 #include <memory>
-
+#include <vector>
+#include <vector>
 namespace fpcard_slicer {
   namespace image {
     typedef unsigned char Pixel;
@@ -15,106 +16,104 @@ namespace fpcard_slicer {
       Grayscale,
       Binary
     };
+    enum Format {
+      JPEG,
+      PNG,
+      Other
+    };
     struct Size {
-      int width;
-      int height;
+      unsigned width;
+      unsigned height;
     };
 
     class Clip {
     public:
       Clip():
         _left(0),_right(0),_top(0),_bottom(0){}
-      Clip(int left, int right, int top, int bottom):
+      Clip(unsigned left, unsigned right, unsigned top, unsigned bottom):
         _left(left),_right(right),_top(top),_bottom(bottom){}
-      inline const int left() {
+      inline const unsigned left() {
         return _left;
       }
-      inline const int right() {
+      inline const unsigned right() {
         return _right;
       }
-      inline const int top() {
+      inline const unsigned top() {
         return _top;
       }
-      inline const int bottom() {
+      inline const unsigned bottom() {
         return _bottom;
       }
-      inline void set_left(int value) {
+      inline void set_left(unsigned value) {
         _left = value;
       }
-      inline void set_right(int value) {
+      inline void set_right(unsigned value) {
         _right = value;
       }
-      inline void set_top(int value) {
+      inline void set_top(unsigned value) {
         _top = value;
       }
-      inline void set_bottom(int value) {
+      inline void set_bottom(unsigned value) {
         _bottom = value;
       }
-      inline const int width() {
-        return abs(_right - _left);
+      inline const unsigned width() {
+        return abs((int)_right - (int)_left);
       }
-      inline const int height() {
-        return abs(_top - _bottom);
+      inline const unsigned height() {
+        return abs((int)(_top - _bottom));
       }
       inline const Size size() {
         return {width(), height()};
       }
-      inline const int length() {
+      inline const unsigned length() {
         return width()*height();
       }
-      inline const void Scale(int factor) {
+      inline const void Scale(unsigned factor) {
         _left *= factor;
         _right *= factor;
         _top *= factor;
         _bottom *= factor;
       }
-      inline const void Expand(int width, int height) {
+      inline const void Expand(unsigned width, unsigned height) {
         _left += width;
         _right += width;
         _top += height;
         _bottom += height;
       }
     private:
-      int _left, _right, _top, _bottom;
-    };
-
-    enum Format {
-      JPEG,
-      WSQ_5,
-      WSQ_15,
-      RAW
+      unsigned _left, _right, _top, _bottom;
     };
 
     class Image {
     public:
       Image() = default;
-      Image(Size size, ColorMode mode):
-        _size(size), _mode(mode){
-        _data = (Pixel *)malloc((size_t)length());
-      }
-      Image(Pixel* data, const Size size):
-        _data(data), _size(size), _mode(Grayscale){
-      }
-      Image(Pixel* data, const Size size, ColorMode mode):
-        _data(data), _size(size), _mode(mode){
+      Image(const std::string&);
+      Image(std::vector<Pixel> data, Size size): _data(data), _size(size), _mode(Grayscale) {}
+      Image(std::vector<Pixel> data, Size size, ColorMode mode): _data(data), _size(size), _mode(mode) {}
+      Image(std::vector<Pixel> data, int w, int h, ColorMode mode): _data(data), _size(Size{w,h}), _mode(mode) {}
+      Image(Size size, ColorMode mode): _size(size), _mode(mode) {
+        Clear();
+        _data.resize(length());
       }
       ~Image();
-      void LoadFromFile(const std::string&);
-      inline void Save(const std::string& path, Format format) {
-        Save(path, format, 100);
-      }
-      void Save(const std::string&, Format, int);
-      std::unique_ptr<Image> Scale(float);
-      std::unique_ptr<Image> Cut(Clip);
-      void FilterBinarize(int);
-      void FilterMean(int bw, int bh);
-      void FilterRemoveVerticalLines(int, int);
-      void FilterRemoveHorizontalLines(int, int);
-      void FilterRemoveVerticalLines2(int, int, int);
-      void FilterEdge(int, Pixel);
-      void FilterRemoveHorizontalLines2(int, int);
+      void Save(const std::string&);
+      void Save(const std::string&, int);
+      std::shared_ptr<Image> Scale(float);
+      std::shared_ptr<Image> Cut(Clip);
+      void ApplyBinarizedFilter(unsigned);
+      void ApplyAverageFilter(unsigned bw, unsigned bh);
+      void ApplyVerticalFilter(unsigned, unsigned);
+      void ApplyHorizontalWhiteFilter(unsigned, unsigned);
+      void ApplyEdgeFilter(unsigned, Pixel);
+      void ApplyHorizontalBlackFilter(unsigned, unsigned);
       inline const Pixel white() {
         return _mode==Grayscale?WHITE_GRAYSCALE:WHITE_BINARY;
+      }
+      inline std::vector<Pixel>::iterator get() {
+        return _data.begin();
+      }
+      inline std::vector<Pixel>::iterator end() {
+        return _data.end();
       }
       inline const Pixel black() {
         return BLACK_COLOR;
@@ -122,67 +121,72 @@ namespace fpcard_slicer {
       inline const Size size() {
         return _size;
       }
-      inline const int length() {
+      inline const unsigned length() {
         return _size.width * _size.height;
       }
 
-      inline const int width() {
+      inline const unsigned width() {
         return _size.width;
       }
-      inline const int height() {
+      inline const unsigned height() {
         return _size.height;
       }
-      inline const Pixel pixel(int index) {
+      inline const Pixel pixel(unsigned index) {
         CheckRange(index);
 
         return _data[index];
       }
-      inline const Pixel pixel(int x, int y) {
+      inline const Pixel pixel(unsigned x, unsigned y) {
         return pixel(XY2Index(x, y));
       }
-      void set_pixel(int x, int y, const Pixel value) {
+      void set_pixel(unsigned x, unsigned y, const Pixel value) {
         set_pixel(XY2Index(x, y),value);
       }
-      void set_pixel(int index, const Pixel value) {
+      void add_pixel(Pixel value) {
+        _data.push_back(value);
+      }
+      void set_pixel(unsigned index, const Pixel value) {
         CheckRange(index);
 
         _data[index] = value;
       }
-      inline const int SumVertical(int x) {
-        int sum = 0;
-        for (int y = 0; y < height(); ++y)
+      inline const unsigned SumVertical(unsigned x) {
+        unsigned sum = 0;
+        for (unsigned y = 0; y < height(); ++y)
           sum += _data[XY2Index(x,y)];
         return sum;
       }
-      inline const int SumHorizontal(int y) {
-        int sum = 0;
-        for (int x = 0; x < width(); ++x)
+      inline const unsigned SumHorizontal(unsigned y) {
+        unsigned sum = 0;
+        for (unsigned x = 0; x < width(); ++x)
           sum += _data[XY2Index(x,y)];
         return sum;
       }
     private:
       int _id = 0, _len = 0, _ppi = 0, _img_type = 0;
-      Pixel* _data = nullptr;
+      std::vector<Pixel> _data;
       ColorMode _mode;
       Size _size = {};
-      inline void CheckRange(int index) {
+      Format extension(const std::string& file);
+      void ReadPNG(const std::string&);
+      void ReadJPEG(const std::string &);
+      void SavePNG(const std::string&);
+      void SaveJPEG(const std::string&, int);
+      inline void CheckRange(unsigned index) {
         if(index < 0 && index > length())
           throw std::invalid_argument("Out of range");
       }
-      inline int XY2Index(int x, int y) {
+      inline unsigned XY2Index(unsigned x, unsigned y) {
         return y * width() + x;
       }
       inline void Clear() {
-        if (_data != nullptr)
-          free(_data);
+        _data.clear();
       }
       inline void ToBinary() {
-        for(int k = 0; k < length(); k++)
-          _data[k] *= WHITE_GRAYSCALE;
+        for(auto &pixel : _data) pixel*=WHITE_GRAYSCALE;
       }
       inline void ToGrayscale() {
-        for(int k = 0; k < length(); k++)
-          _data[k] /= WHITE_GRAYSCALE;
+        for(auto &pixel : _data) pixel/=WHITE_GRAYSCALE;
       }
     };
   }// namespace image
