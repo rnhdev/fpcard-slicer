@@ -26,7 +26,7 @@ Is a application for to extract fingerprints of non-standard teen fingerprint ca
 	-o,--demo. If is set, the partial result is output
 ## Limitations
 Only support scanned images in 500dpi in jpeg or png format
-## Example
+## Output example
 ![alt text](test/fcard-01.jpg "fingerprint card")
 ![alt text](test/fcard-01/01_binarized.jpg "scaling and binarized image")
 ![alt text](test/fcard-01/02_clip.jpg "clip")
